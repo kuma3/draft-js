@@ -12,10 +12,10 @@
 
 'use strict';
 
-import type {BlockMap} from 'BlockMap';
-import type {DraftEditorModes} from 'DraftEditorModes';
-import type {DraftEditorDefaultProps, DraftEditorProps} from 'DraftEditorProps';
-import type {DraftScrollPosition} from 'DraftScrollPosition';
+import type { BlockMap } from 'BlockMap';
+import type { DraftEditorModes } from 'DraftEditorModes';
+import type { DraftEditorDefaultProps, DraftEditorProps } from 'DraftEditorProps';
+import type { DraftScrollPosition } from 'DraftScrollPosition';
 
 const DefaultDraftBlockRenderMap = require('DefaultDraftBlockRenderMap');
 const DefaultDraftInlineStyle = require('DefaultDraftInlineStyle');
@@ -31,6 +31,7 @@ const React = require('React');
 const Scroll = require('Scroll');
 const Style = require('Style');
 const UserAgent = require('UserAgent');
+const { Map } = require('immutable');
 
 const cx = require('cx');
 const generateRandomKey = require('generateRandomKey');
@@ -57,7 +58,10 @@ const handlerMap = {
   render: null,
 };
 
-type State = {contentsKey: number, ...};
+type State = {
+  contentsKey: number,
+  blockKeyRestoreMap: Map,
+};
 
 let didInitODS = false;
 
@@ -136,10 +140,10 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
   static defaultProps: DraftEditorDefaultProps = {
     ariaDescribedBy: '{{editor_id_placeholder}}',
     blockRenderMap: DefaultDraftBlockRenderMap,
-    blockRendererFn: function() {
+    blockRendererFn: function () {
       return null;
     },
-    blockStyleFn: function() {
+    blockStyleFn: function () {
       return '';
     },
     keyBindingFn: getDefaultKeyBinding,
@@ -190,12 +194,23 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
   setMode: (mode: DraftEditorModes) => void;
   exitCurrentMode: () => void;
   restoreEditorDOM: (scrollPosition?: DraftScrollPosition) => void;
+  restoreEditorBlockDOM: (
+    blockKey: string,
+    scrollPosition?: DraftScrollPosition,
+  ) => void;
   setClipboard: (clipboard: ?BlockMap) => void;
   getClipboard: () => ?BlockMap;
   getEditorKey: () => string;
   update: (editorState: EditorState) => void;
   onDragEnter: () => void;
   onDragLeave: () => void;
+
+  state: State = {
+    // See `restoreEditorDOM()`.
+    contentsKey: 0,
+    // See `restoreEditorBlockDOM()`.
+    blockKeyRestoreMap: new Map({}),
+  };
 
   constructor(props: DraftEditorProps) {
     super(props);
@@ -245,16 +260,16 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
           // eslint-disable-next-line no-console
           console.warn(
             `Supplying an \`${propName}\` prop to \`DraftEditor\` has ` +
-              'been deprecated. If your handler needs access to the keyboard ' +
-              'event, supply a custom `keyBindingFn` prop that falls back to ' +
-              'the default one (eg. https://is.gd/wHKQ3W).',
+            'been deprecated. If your handler needs access to the keyboard ' +
+            'event, supply a custom `keyBindingFn` prop that falls back to ' +
+            'the default one (eg. https://is.gd/wHKQ3W).',
           );
         }
       });
     }
 
     // See `restoreEditorDOM()`.
-    this.state = {contentsKey: 0};
+    this.state = { contentsKey: 0, blockKeyRestoreMap: new Map({}) };
   }
 
   /**
@@ -287,7 +302,7 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
     // Instead of having a direct ref on the child, we'll grab it here.
     // This is safe as long as the rendered structure is static (which it is).
     // This lets the child support ref={props.editorRef} without merging refs.
-    this.editor = node !== null ? (node: any).firstChild : null;
+    this.editor = node !== null ? (node: any).firstChild: null;
   };
 
   _showPlaceholder(): boolean {
@@ -344,6 +359,7 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
       textAlignment,
       textDirectionality,
     } = this.props;
+    const { blockKeyRestoreMap } = this.state;
 
     const rootClass = cx({
       'DraftEditor/root': true,
@@ -383,6 +399,7 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
       editorState,
       preventScroll,
       textDirectionality,
+      blockKeyRestoreMap,
     };
 
     return (
@@ -502,7 +519,7 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
   focus: (scrollPosition?: DraftScrollPosition) => void = (
     scrollPosition?: DraftScrollPosition,
   ): void => {
-    const {editorState} = this.props;
+    const { editorState } = this.props;
     const alreadyHasFocus = editorState.getSelection().getHasFocus();
     const editorNode = this.editor;
 
@@ -513,7 +530,7 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
     }
 
     const scrollParent = Style.getScrollParent(editorNode);
-    const {x, y} = scrollPosition || getScrollPosition(scrollParent);
+    const { x, y } = scrollPosition || getScrollPosition(scrollParent);
 
     invariant(isHTMLElement(editorNode), 'editorNode is not an HTMLElement');
 
@@ -554,8 +571,8 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
    * the active mode.
    */
   setMode: DraftEditorModes => void = (mode: DraftEditorModes): void => {
-    const {onPaste, onCut, onCopy} = this.props;
-    const editHandler = {...handlerMap.edit};
+    const { onPaste, onCut, onCopy } = this.props;
+    const editHandler = { ...handlerMap.edit };
 
     if (onPaste) {
       /* $FlowFixMe[incompatible-type] (>=0.117.0 site=www,mobile) This comment
@@ -595,10 +612,42 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
   restoreEditorDOM: (scrollPosition?: DraftScrollPosition) => void = (
     scrollPosition?: DraftScrollPosition,
   ): void => {
-    this.setState({contentsKey: this.state.contentsKey + 1}, () => {
+    this.setState({ contentsKey: this.state.contentsKey + 1 }, () => {
       this.focus(scrollPosition);
     });
   };
+
+  restoreEditorBlockDOM: (
+    blockKey: string,
+    scrollPosition?: DraftScrollPosition,
+  ) => void = (
+    blockKey: string,
+    scrollPosition?: DraftScrollPosition,
+    ): void => {
+      let { blockKeyRestoreMap } = this.state;
+
+      blockKeyRestoreMap = blockKeyRestoreMap.set(
+        blockKey,
+        blockKeyRestoreMap.has(blockKey)
+          ? blockKeyRestoreMap.get(blockKey) + 1
+          : 1,
+      );
+
+      // Wrap state updates in `flushControlled`. In sync mode, this is
+      // effectively a no-op. In async mode, this ensures all updates scheduled
+      // inside are flushed before React yields to the browser.
+      if (flushControlled) {
+        flushControlled(() =>
+          this.setState({ blockKeyRestoreMap }, () => {
+            this.focus(scrollPosition);
+          }),
+        );
+      } else {
+        this.setState({ blockKeyRestoreMap }, () => {
+          this.focus(scrollPosition);
+        });
+      }
+    };
 
   /**
    * Used via `this.setClipboard(...)`.
