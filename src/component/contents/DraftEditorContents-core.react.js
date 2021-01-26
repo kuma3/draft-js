@@ -16,6 +16,7 @@ import type {DraftBlockRenderMap} from 'DraftBlockRenderMap';
 import type {DraftInlineStyle} from 'DraftInlineStyle';
 import type EditorState from 'EditorState';
 import type {BidiDirection} from 'UnicodeBidiDirection';
+import type {Map} from 'immutable';
 
 const DraftEditorBlock = require('DraftEditorBlock.react');
 const DraftOffsetKey = require('DraftOffsetKey');
@@ -38,6 +39,7 @@ type Props = {
   editorState: EditorState,
   preventScroll?: boolean,
   textDirectionality?: BidiDirection,
+  blockKeyRestoreMap: Map,
   ...
 };
 
@@ -90,6 +92,10 @@ class DraftEditorContents extends React.Component<Props> {
       return true;
     }
 
+    if (this.props.blockKeyRestoreMap !== nextProps.blockKeyRestoreMap) {
+      return true;
+    }
+
     const didHaveFocus = prevEditorState.getSelection().getHasFocus();
     const nowHasFocus = nextEditorState.getSelection().getHasFocus();
 
@@ -136,6 +142,7 @@ class DraftEditorContents extends React.Component<Props> {
       editorKey,
       preventScroll,
       textDirectionality,
+      blockKeyRestoreMap,
     } = this.props;
 
     const content = editorState.getCurrentContent();
@@ -231,7 +238,10 @@ class DraftEditorContents extends React.Component<Props> {
       const child = React.createElement(
         Element,
         childProps,
-        <Component {...componentProps} key={key} />,
+        <Component
+          {...componentProps}
+          key={`${key}-${blockKeyRestoreMap.get(key) || '0'}`}
+        />,
       );
 
       processedBlocks.push({
