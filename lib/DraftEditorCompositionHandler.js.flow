@@ -231,18 +231,16 @@ const DraftEditorCompositionHandler = {
     const documentSelection = getDraftEditorSelection(lastEditorState, getContentEditableContainer(editor));
     const compositionEndSelectionState = documentSelection.selectionState;
     const anchorKey = documentSelection.selectionState.getAnchorKey();
-    const focusKey = documentSelection.selectionState.getFocusKey();
+    const focusKey = documentSelection.selectionState.getFocusKey(); // if (anchorKey === focusKey) {
+    // editor.restoreEditorBlockDOM(focusKey);
+    // } else {
 
-    if (anchorKey === focusKey) {
-      editor.restoreEditorBlockDOM(focusKey);
-    } else {
-      editor.restoreEditorDOM();
-    } // See:
+    editor.restoreEditorDOM(); // }
+    // See:
     // - https://github.com/facebook/draft-js/issues/2093
     // - https://github.com/facebook/draft-js/pull/2094
     // Apply this fix only in IE for now. We can test it in
     // other browsers in the future to ensure no regressions
-
 
     const editorStateWithUpdatedSelection = isIE ? EditorState.forceSelection(editorState, compositionEndSelectionState) : EditorState.acceptSelection(editorState, compositionEndSelectionState);
     editor.update(EditorState.push(editorStateWithUpdatedSelection, contentState, 'insert-characters'));
