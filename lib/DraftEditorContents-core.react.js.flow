@@ -200,7 +200,9 @@ class DraftEditorContents extends React.Component<Props> {
         };
       }
 
-      const child = React.createElement(Element, childProps, <Component {...componentProps} key={`${key}-${blockKeyRestoreMap.get(key) || '0'}`} />);
+      console.log(key);
+      console.log(`${key} - ${blockKeyRestoreMap.get(key) || '0'}`);
+      const child = React.createElement(Element, childProps, <Component {...componentProps} key={`${key} - ${blockKeyRestoreMap.get(key) || '0'}`} />);
       processedBlocks.push({
         block: child,
         wrapperTemplate,
