@@ -31,7 +31,6 @@ const React = require('React');
 const Scroll = require('Scroll');
 const Style = require('Style');
 const UserAgent = require('UserAgent');
-const {Map} = require('immutable');
 
 const cx = require('cx');
 const generateRandomKey = require('generateRandomKey');
@@ -58,10 +57,7 @@ const handlerMap = {
   render: null,
 };
 
-type State = {
-  contentsKey: number,
-  blockKeyRestoreMap: Map,
-};
+type State = {contentsKey: number};
 
 let didInitODS = false;
 
@@ -193,10 +189,6 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
   setMode: (mode: DraftEditorModes) => void;
   exitCurrentMode: () => void;
   restoreEditorDOM: (scrollPosition?: DraftScrollPosition) => void;
-  restoreEditorBlockDOM: (
-    blockKey: string,
-    scrollPosition?: DraftScrollPosition,
-  ) => void;
   setClipboard: (clipboard: ?BlockMap) => void;
   getClipboard: () => ?BlockMap;
   getEditorKey: () => string;
@@ -204,12 +196,8 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
   onDragEnter: () => void;
   onDragLeave: () => void;
 
-  state: State = {
-    // See `restoreEditorDOM()`.
-    contentsKey: 0,
-    // See `restoreEditorBlockDOM()`.
-    blockKeyRestoreMap: new Map({}),
-  };
+  // See `restoreEditorDOM()`.
+  state: State = {contentsKey: 0};
 
   constructor(props: DraftEditorProps) {
     super(props);
@@ -356,7 +344,6 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
       textAlignment,
       textDirectionality,
     } = this.props;
-    const {blockKeyRestoreMap} = this.state;
 
     const rootClass = cx({
       'DraftEditor/root': true,
@@ -396,7 +383,6 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
       editorState,
       preventScroll,
       textDirectionality,
-      blockKeyRestoreMap,
     };
 
     const contentClassName =
@@ -636,38 +622,6 @@ class DraftEditor extends React.Component<DraftEditorProps, State> {
       );
     } else {
       this.setState({contentsKey: this.state.contentsKey + 1}, () => {
-        this.focus(scrollPosition);
-      });
-    }
-  };
-
-  restoreEditorBlockDOM: (
-    blockKey: string,
-    scrollPosition?: DraftScrollPosition,
-  ) => void = (
-    blockKey: string,
-    scrollPosition?: DraftScrollPosition,
-  ): void => {
-    let {blockKeyRestoreMap} = this.state;
-
-    blockKeyRestoreMap = blockKeyRestoreMap.set(
-      blockKey,
-      blockKeyRestoreMap.has(blockKey)
-        ? blockKeyRestoreMap.get(blockKey) + 1
-        : 1,
-    );
-
-    // Wrap state updates in `flushControlled`. In sync mode, this is
-    // effectively a no-op. In async mode, this ensures all updates scheduled
-    // inside are flushed before React yields to the browser.
-    if (flushControlled) {
-      flushControlled(() =>
-        this.setState({blockKeyRestoreMap}, () => {
-          this.focus(scrollPosition);
-        }),
-      );
-    } else {
-      this.setState({blockKeyRestoreMap}, () => {
         this.focus(scrollPosition);
       });
     }
