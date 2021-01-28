@@ -231,8 +231,6 @@ class DraftEditorContents extends React.Component<Props> {
           suppressContentEditableWarning: true,
         };
       }
-
-      console.log(blockKeyRestoreMap);
       
       const child = React.createElement(
         Element,
