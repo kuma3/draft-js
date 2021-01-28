@@ -232,6 +232,8 @@ class DraftEditorContents extends React.Component<Props> {
         };
       }
 
+      console.log(blockKeyRestoreMap);
+      
       const child = React.createElement(
         Element,
         childProps,
