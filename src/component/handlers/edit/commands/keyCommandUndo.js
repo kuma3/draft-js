@@ -20,7 +20,7 @@ function keyCommandUndo(
 ): void {
   const undoneState = EditorState.undo(editorState);
   console.log('undo');
-  console.log(undoneState.getSelectionAfter().getFocusOffset());
+  console.log(undoneState.getCurrentContent().getSelectionAfter().getFocusOffset());
 
   // If the last change to occur was a spellcheck change, allow the undo
   // event to fall through to the browser. This allows the browser to record
